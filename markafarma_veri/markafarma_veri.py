@@ -4,14 +4,15 @@ from scrapy.spiders import Spider
 from scrapy import Request
 import re
 import time
+from urllib.parse import urljoin
 
-class AllDermoSpider(Spider):
-    name = "all_dermo"
-    allowed_domains = ["dermoeczanem.com"]
+class AllMarkaFarmaSpider(Spider):
+    name = "all_markafarma"
+    allowed_domains = ["markafarma.com"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        with open("categories_dermoecz.json", "r", encoding="utf-8") as f:
+        with open("categories_markafarma.json", "r", encoding="utf-8") as f:
             self.category_links = [item["url"] for item in json.load(f)]
         self.category_index = 0
 
@@ -35,9 +36,11 @@ class AllDermoSpider(Spider):
             print(f"🔄 {base_url} - {current_page}. sayfa")
 
         for product in products:
-            product_name = product.css('a.product-title::text').get()
-            price = product.css('span.product-price::text').get()
-            product_link = product.css('a.product-title::attr(href)').get()
+            product_name = product.css('a.w-100.text-black.fs875.fw-regular.product-title::text').get()
+            price = product.css('strong.fw-semibold.product-price::text').get()
+            product_link = product.css('a.w-100.text-black.fs875.fw-regular.product-title::attr(href)').get()
+            product_link = urljoin(self.allowed_domains[0], product_link)
+            
             if product_link:
                 product_link = response.urljoin(product_link)
                 yield response.follow(product_link, self.parse_product_detail, meta={
@@ -82,8 +85,8 @@ class AllDermoSpider(Spider):
         price = response.meta['price']
         product_url = response.meta['product_url']
         
-        barcode = response.css('span.text-primary.fw-bold.chbarcode::text').get()
-        
+        barcode = response.css('div.w-100.text-black::text').get()
+        barcode = barcode.split(":")[1]
         yield {
             'product_name': product_name,
             'price': price,
@@ -93,13 +96,13 @@ class AllDermoSpider(Spider):
 
 process = CrawlerProcess(settings={
     "FEEDS": {
-        "dermoecz_all_products.json": {"format": "json", "encoding": "utf-8"},
+        "markafarma_all_products.json": {"format": "json", "encoding": "utf-8"},
     },
     "LOG_LEVEL": "ERROR",
 })
 
 start = time.time()
-process.crawl(AllDermoSpider)
+process.crawl(AllMarkaFarmaSpider)
 process.start()
 
 print(f"Execution time: {time.time() - start}")
